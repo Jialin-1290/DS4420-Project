@@ -2,20 +2,20 @@
 ## Stock Price Prediction Using Machine Learning
 
 ### Model 1
-Time Series Model: ARIMA
+Time Series Model: SARIMAX
 
 ### Dataset
 Historical stock price data obtained from Yahoo Finance.
 
-Time period:
-January 1, 2015 – January 1, 2026
+Time period:  
+January 1, 2015 – January 1, 2025
 
 Features:
-- Open
-- High
-- Low
-- Close
-- Volume
+- Closing price
+- Log-transformed price
+- 20-day moving average of NVDA
+- 50-day moving average of NVDA
+- Other technology stock prices as explanatory variables
 
 ### Stocks
 Top 8 large-cap stocks in the technology sector:
