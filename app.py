@@ -24,41 +24,63 @@ st.caption("Authors: Jialin Weng and Mengyang Wang")
 # Let the user choose the page
 page = st.sidebar.radio(
     "Go to",
-    ["Project Overview", "Interactive Forecast Viewer"]
+    ["Overview of the Project", "Interactive Forecast Viewer"]
 )
 
-if page == "Project Overview":
-    st.header("Project Overview")
+if page == "Overview of the Project":
+    st.header("Overview of the Project")
 
+    st.subheader("Beginning")
     st.write(
-        "This project studies stock price prediction for eight large technology companies. "
+        "This project looks at how to guess the stock prices of eight big tech companies. "
         "The stocks are NVDA, AAPL, MSFT, AVGO, MU, ORCL, AMD, and TSM."
     )
 
     st.write(
-        "We used daily closing prices from Yahoo Finance. "
-        "The data cover 2015 through 2025."
+        "We used two models on the same set of data. "
+        "One is a time series model called SARIMAX. "
+        "The other is a model for Bayesian linear regression."
+    )
+
+    st.subheader("Motivation and Data")
+    st.write(
+        "We chose big tech companies because they are important in the market and have long price histories. "
+        "We got the daily closing prices from Yahoo Finance. "
+        "The data goes from 2015 to 2025."
+    )
+
+    st.subheader("Method")
+    st.write(
+        "The SARIMAX model used prices that had been log-transformed, lagged peer stock prices, "
+        "and lagged 20-day and 50-day moving averages. "
+        "The Bayesian model used prices that had been log-transformed, prices of its own stock "
+        "and peer stocks that had been lagged, and moving averages that had been lagged."
     )
 
     st.write(
-        "We compared two models on the same dataset. "
-        "One is a SARIMAX time series model. "
-        "The other is a Bayesian linear regression model."
+        "We trained on 80% of the data and tested on 20%. "
+        "We used RMSE and MAE to see how well the predictions worked."
+    )
+
+    st.subheader("Main Findings")
+    st.write(
+        "Both models made good predictions, but they worked best for different stocks. "
+        "In the SARIMAX model, NVDA had the least amount of error in its forecast. "
+        "In the Bayesian model, AAPL had the smallest error in its forecast."
+    )
+
+    st.subheader("Discussion and Future Work")
+    st.write(
+        "Both models only looked at past prices. "
+        "They didn't take into account news, market sentiment, or any other outside factors."
     )
 
     st.write(
-        "Both models used past price-based information to make forecasts. "
-        "We used RMSE and MAE to compare prediction performance."
+        "In the future, we can add more variables, use stock returns, and try out more models."
     )
 
     st.write(
-        "Both models gave useful forecasts, but they worked best for different stocks. "
-        "In the SARIMAX model, NVDA had the lowest forecast error. "
-        "In the Bayesian model, AAPL had the lowest forecast error."
-    )
-
-    st.write(
-        "Use the second page to explore the forecast results with an interactive plot."
+        "The second page shows the actual and predicted values on the 20 percent test data."
     )
 
 elif page == "Interactive Forecast Viewer":
@@ -108,59 +130,73 @@ elif page == "Interactive Forecast Viewer":
     fig = go.Figure()
 
     if selected_model == "SARIMAX":
-        fig.add_trace(go.Scatter(
-            x=sarimax_stock["Date"],
-            y=sarimax_stock["Actual"],
-            mode="lines",
-            name="Actual",
-            line=dict(color="orange")
-        ))
-        fig.add_trace(go.Scatter(
-            x=sarimax_stock["Date"],
-            y=sarimax_stock["Forecast"],
-            mode="lines",
-            name="SARIMAX Forecast",
-            line=dict(color="blue")
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=sarimax_stock["Date"],
+                y=sarimax_stock["Actual"],
+                mode="lines",
+                name="Actual",
+                line=dict(color="orange")
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=sarimax_stock["Date"],
+                y=sarimax_stock["Forecast"],
+                mode="lines",
+                name="SARIMAX Forecast",
+                line=dict(color="blue")
+            )
+        )
 
     elif selected_model == "Bayesian":
-        fig.add_trace(go.Scatter(
-            x=bayesian_stock["Date"],
-            y=bayesian_stock["Actual"],
-            mode="lines",
-            name="Actual",
-            line=dict(color="orange")
-        ))
-        fig.add_trace(go.Scatter(
-            x=bayesian_stock["Date"],
-            y=bayesian_stock["Forecast"],
-            mode="lines",
-            name="Bayesian Forecast",
-            line=dict(color="green")
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=bayesian_stock["Date"],
+                y=bayesian_stock["Actual"],
+                mode="lines",
+                name="Actual",
+                line=dict(color="orange")
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=bayesian_stock["Date"],
+                y=bayesian_stock["Forecast"],
+                mode="lines",
+                name="Bayesian Forecast",
+                line=dict(color="green")
+            )
+        )
 
     else:
-        fig.add_trace(go.Scatter(
-            x=sarimax_stock["Date"],
-            y=sarimax_stock["Actual"],
-            mode="lines",
-            name="Actual",
-            line=dict(color="orange")
-        ))
-        fig.add_trace(go.Scatter(
-            x=sarimax_stock["Date"],
-            y=sarimax_stock["Forecast"],
-            mode="lines",
-            name="SARIMAX Forecast",
-            line=dict(color="blue")
-        ))
-        fig.add_trace(go.Scatter(
-            x=bayesian_stock["Date"],
-            y=bayesian_stock["Forecast"],
-            mode="lines",
-            name="Bayesian Forecast",
-            line=dict(color="green")
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=sarimax_stock["Date"],
+                y=sarimax_stock["Actual"],
+                mode="lines",
+                name="Actual",
+                line=dict(color="orange")
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=sarimax_stock["Date"],
+                y=sarimax_stock["Forecast"],
+                mode="lines",
+                name="SARIMAX Forecast",
+                line=dict(color="blue")
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=bayesian_stock["Date"],
+                y=bayesian_stock["Forecast"],
+                mode="lines",
+                name="Bayesian Forecast",
+                line=dict(color="green")
+            )
+        )
 
     # Set the plot title and labels
     fig.update_layout(
@@ -191,10 +227,12 @@ elif page == "Interactive Forecast Viewer":
         )
 
         # Rename the columns for easier reading
-        merged_df = merged_df.rename(columns={
-            "Actual": "Actual",
-            "Forecast_SARIMAX": "SARIMAX Forecast",
-            "Forecast_Bayesian": "Bayesian Forecast"
-        })
+        merged_df = merged_df.rename(
+            columns={
+                "Actual": "Actual",
+                "Forecast_SARIMAX": "SARIMAX Forecast",
+                "Forecast_Bayesian": "Bayesian Forecast"
+            }
+        )
 
         st.dataframe(merged_df, use_container_width=True)
