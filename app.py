@@ -30,7 +30,7 @@ page = st.sidebar.radio(
 if page == "Overview of the Project":
     st.header("Overview of the Project")
 
-    st.subheader("Beginning")
+    st.subheader("Introduction")
     st.write(
         "This project looks at how to guess the stock prices of eight big tech companies. "
         "The stocks are NVDA, AAPL, MSFT, AVGO, MU, ORCL, AMD, and TSM."
