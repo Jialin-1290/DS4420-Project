@@ -153,6 +153,14 @@ def run_sarimax_for_stock(stock_name, full_data, ticker_list, train_ratio=0.8):
     test_price = np.exp(y_test)
     forecast_price = np.exp(forecast_log)
 
+    # Save the results of testing period actual and forecast values.
+    plot_df = pd.DataFrame({
+        "Stock": stock_name,
+        "Date": test_price.index,
+        "Actual": test_price.values,
+        "Forecast": forecast_price.values
+    })
+
     # Compute RMSE and MAE to evaluate forecast performance.
     rmse = np.sqrt(mean_squared_error(test_price, forecast_price))
     mae = mean_absolute_error(test_price, forecast_price)
@@ -174,25 +182,33 @@ def run_sarimax_for_stock(stock_name, full_data, ticker_list, train_ratio=0.8):
 
     # Return the main results for this stock.
     return {
-        "Stock": stock_name,
-        "ADF Statistic": adf_stat,
-        "ADF p-value": adf_pvalue,
-        "Order": order,
-        "RMSE": rmse,
-        "MAE": mae
+        "summary": {
+            "Stock": stock_name,
+            "ADF Statistic": adf_stat,
+            "ADF p-value": adf_pvalue,
+            "Order": order,
+            "RMSE": rmse,
+            "MAE": mae
+        },
+        "plot_df": plot_df
     }
 
 
 # Run the model for all selected stocks
 # and save the results in a list.
 all_results = []
+all_plot_dfs = []
 
 for stock in tickers:
     result = run_sarimax_for_stock(stock, data, tickers)
-    all_results.append(result)
+    all_results.append(result["summary"])
+    all_plot_dfs.append(result["plot_df"])
 
 # Make the final summary table.
 results_df = pd.DataFrame(all_results)
 
 print("\nFinal Summary Table:")
 print(results_df)
+
+sarimax_plot_df = pd.concat(all_plot_dfs, ignore_index=True)
+sarimax_plot_df.to_csv("sarimax_all.csv", index=False)

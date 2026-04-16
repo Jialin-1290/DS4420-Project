@@ -126,6 +126,7 @@ make_plot <- function(plot_df, ticker_name) {
 # Make empty lists to save results
 results_list <- list()
 coef_list <- list()
+plot_list <- list()
 
 # Run the model for each stock
 for (target_ticker in tickers) {
@@ -226,10 +227,14 @@ for (target_ticker in tickers) {
   
   # Build plot data
   plot_df <- data.frame(
+    Stock = target_ticker,
     Date = as.Date(test_data$Date),
     Actual = as.numeric(actual_price),
     Forecast = as.numeric(forecast_price)
   )
+  
+  # Save plot data to list for final CSV
+  plot_list[[target_ticker]] <- plot_df
   
   # Save plot as PNG
   file_name_png <- paste0("bayesian_", target_ticker, "_plot.png")
@@ -241,6 +246,10 @@ for (target_ticker in tickers) {
   # Print progress
   cat("Done:", target_ticker, "\n")
 }
+
+# Combine all stock plot data into one CSV file
+bayesian_plot_df <- do.call(rbind, plot_list)
+write.csv(bayesian_plot_df, "bayesian_all.csv", row.names = FALSE)
 
 # Combine all stock results into one table
 results_table <- do.call(rbind, results_list)
