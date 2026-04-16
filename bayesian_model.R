@@ -2,6 +2,9 @@
 library(quantmod)
 library(dplyr)
 library(zoo)
+library(MASS)
+
+set.seed(42)
 
 # Set the stock tickers
 tickers <- c("NVDA", "AAPL", "MSFT", "AVGO", "MU", "ORCL", "AMD", "TSM")
@@ -43,9 +46,11 @@ for (tic in tickers) {
   log_data[[paste0("log_", tic)]] <- log(log_data[[tic]])
 }
 
-# Fit Bayesian linear regression with a simple normal prior
-bayes_linear_regression <- function(X, y, tau2 = 100) {
-  # Number of columns in X
+# Fit Bayesian linear regression with Gibbs sampling
+bayes_linear_regression <- function(X, y, tau2 = 100, alpha0 = 2, beta0 = 1,
+                                    n_iter = 4000, burn_in = 1000) {
+  # Number of rows and columns
+  n <- nrow(X)
   p <- ncol(X)
   
   # Prior mean and prior variance
@@ -53,26 +58,48 @@ bayes_linear_regression <- function(X, y, tau2 = 100) {
   V0 <- diag(tau2, p)
   V0_inv <- solve(V0)
   
+  # Store draws
+  beta_draws <- matrix(NA, nrow = n_iter, ncol = p)
+  sigma2_draws <- numeric(n_iter)
+  
+  # Set starting values
+  beta_curr <- matrix(0, nrow = p, ncol = 1)
+  sigma2_curr <- 1
+  
   # Compute X'X and X'y
   XtX <- t(X) %*% X
   Xty <- t(X) %*% y
   
-  # Get OLS result first
-  beta_ols <- solve(XtX) %*% Xty
-  residuals <- y - X %*% beta_ols
+  # Run Gibbs sampling
+  for (iter in 1:n_iter) {
+    # Get posterior variance and mean for beta
+    Vn <- solve(V0_inv + XtX / sigma2_curr)
+    bn <- Vn %*% (V0_inv %*% b0 + Xty / sigma2_curr)
+    
+    # Draw beta from the conditional posterior
+    beta_curr <- MASS::mvrnorm(1, mu = as.numeric(bn), Sigma = Vn)
+    beta_curr <- matrix(beta_curr, ncol = 1)
+    
+    # Get posterior shape and rate for sigma2
+    alpha_n <- alpha0 + n / 2
+    beta_n <- beta0 + as.numeric(t(y - X %*% beta_curr) %*% (y - X %*% beta_curr)) / 2
+    
+    # Draw sigma2 from the conditional posterior
+    sigma2_curr <- 1 / rgamma(1, shape = alpha_n, rate = beta_n)
+    
+    # Save the draws
+    beta_draws[iter, ] <- as.numeric(beta_curr)
+    sigma2_draws[iter] <- sigma2_curr
+  }
   
-  # Estimate residual variance
-  sigma2_hat <- as.numeric(sum(residuals^2) / (nrow(X) - p))
-  
-  # Compute posterior variance and posterior mean
-  Vn <- solve(V0_inv + XtX / sigma2_hat)
-  bn <- Vn %*% (V0_inv %*% b0 + Xty / sigma2_hat)
+  # Remove burn-in draws
+  keep <- (burn_in + 1):n_iter
   
   # Return the main Bayesian results
   list(
-    posterior_mean = bn,
-    posterior_cov = Vn,
-    sigma2_hat = sigma2_hat
+    beta_draws = beta_draws[keep, , drop = FALSE],
+    sigma2_draws = sigma2_draws[keep],
+    posterior_mean = matrix(colMeans(beta_draws[keep, , drop = FALSE]), ncol = 1)
   )
 }
 
@@ -97,7 +124,7 @@ make_plot <- function(plot_df, ticker_name) {
     lwd = 2.5,
     xlab = "Date",
     ylab = "Price",
-    main = paste("Bayesian Prediction of", ticker_name, "Stock Price")
+    main = paste("Bayesian Forecast for", ticker_name, "Stock Price")
   )
   
   # Add the forecast line
@@ -140,18 +167,18 @@ for (target_ticker in tickers) {
   # Build the model data
   model_data <- log_data %>%
     mutate(
-      # Moving averages of the target stock
+      # Moving averages of the target stock on the log scale
       ma20_raw = zoo::rollmean(.data[[target_log_col]], k = 20, fill = NA, align = "right"),
       ma50_raw = zoo::rollmean(.data[[target_log_col]], k = 50, fill = NA, align = "right"),
       
       # Use one-day lag for moving averages
-      ma20 = lag(ma20_raw, 1),
-      ma50 = lag(ma50_raw, 1),
+      ma20 = dplyr::lag(ma20_raw, 1),
+      ma50 = dplyr::lag(ma50_raw, 1),
       
       # Use one-day lag for target stock
-      x_target_lag1 = lag(.data[[target_log_col]], 1),
+      x_target_lag1 = dplyr::lag(.data[[target_log_col]], 1),
       
-      # Current target value
+      # Current target value on the log scale
       y_t = .data[[target_log_col]]
     )
   
@@ -171,7 +198,7 @@ for (target_ticker in tickers) {
   
   # Keep only needed columns and drop missing rows
   model_data <- model_data %>%
-    select(Date, y_t, all_of(predictor_cols)) %>%
+    dplyr::select(Date, y_t, all_of(predictor_cols)) %>%
     na.omit()
   
   # Split data into train and test
@@ -182,10 +209,10 @@ for (target_ticker in tickers) {
   test_data <- model_data[(train_size + 1):n, ]
   
   # Build X and y for train and test
-  x_train <- as.matrix(train_data %>% select(-Date, -y_t))
+  x_train <- as.matrix(train_data %>% dplyr::select(-Date, -y_t))
   y_train <- as.matrix(train_data$y_t)
   
-  x_test <- as.matrix(test_data %>% select(-Date, -y_t))
+  x_test <- as.matrix(test_data %>% dplyr::select(-Date, -y_t))
   y_test <- as.matrix(test_data$y_t)
   
   # Add intercept column
@@ -193,11 +220,83 @@ for (target_ticker in tickers) {
   x_test <- cbind(1, x_test)
   
   # Fit the Bayesian model
-  bayes_fit <- bayes_linear_regression(x_train, y_train)
+  bayes_fit <- bayes_linear_regression(
+    x_train,
+    y_train,
+    tau2 = 100,
+    alpha0 = 2,
+    beta0 = 1,
+    n_iter = 4000,
+    burn_in = 1000
+  )
   
-  # Get posterior mean and prediction
+  # Get posterior mean
   beta_post <- bayes_fit$posterior_mean
-  y_pred <- x_test %*% beta_post
+  
+  # Get posterior draws
+  beta_draws <- bayes_fit$beta_draws
+  sigma2_draws <- bayes_fit$sigma2_draws
+  
+  # Save simple convergence check plots for AAPL
+  if (target_ticker == "AAPL") {
+    # Save trace plot for sigma2
+    png("bayesian_AAPL_sigma2_trace.png", width = 3000, height = 1500, res = 300)
+    plot(
+      sigma2_draws,
+      type = "l",
+      col = "blue",
+      lwd = 1.5,
+      xlab = "Iteration",
+      ylab = expression(sigma^2),
+      main = expression(paste("Trace Plot for ", sigma^2, " (AAPL)"))
+    )
+    box()
+    dev.off()
+    
+    # Save ACF plot for sigma2
+    png("bayesian_AAPL_sigma2_acf.png", width = 3000, height = 1500, res = 300)
+    acf(
+      sigma2_draws,
+      main = expression(paste("ACF for ", sigma^2, " (AAPL)"))
+    )
+    dev.off()
+    
+    # Save trace plot for one beta draw
+    png("bayesian_AAPL_beta2_trace.png", width = 3000, height = 1500, res = 300)
+    plot(
+      beta_draws[, 2],
+      type = "l",
+      col = "blue",
+      lwd = 1.5,
+      xlab = "Iteration",
+      ylab = expression(beta[2]),
+      main = expression(paste("Trace Plot for ", beta[2], " (AAPL)"))
+    )
+    box()
+    dev.off()
+    
+    # Save ACF plot for one beta draw
+    png("bayesian_AAPL_beta2_acf.png", width = 3000, height = 1500, res = 300)
+    acf(
+      beta_draws[, 2],
+      main = expression(paste("ACF for ", beta[2], " (AAPL)"))
+    )
+    dev.off()
+  }
+  
+  # Make empty matrix for prediction draws
+  pred_draws <- matrix(NA, nrow = nrow(x_test), ncol = nrow(beta_draws))
+  
+  # Draw predictions from the posterior predictive distribution
+  for (s in 1:nrow(beta_draws)) {
+    beta_s <- matrix(beta_draws[s, ], ncol = 1)
+    mu_s <- x_test %*% beta_s
+    y_s <- rnorm(nrow(x_test), mean = as.numeric(mu_s), sd = sqrt(sigma2_draws[s]))
+    pred_draws[, s] <- y_s
+  }
+  
+  # Get posterior predictive mean on the log scale
+  y_pred <- matrix(rowMeans(pred_draws), ncol = 1)
   
   # Change log prices back to original prices
   actual_price <- exp(y_test)
@@ -210,14 +309,14 @@ for (target_ticker in tickers) {
   # Save summary results
   results_list[[target_ticker]] <- data.frame(
     Stock = target_ticker,
-    `Sigma² estimate` = as.numeric(bayes_fit$sigma2_hat),
+    `Posterior mean of Sigma²` = mean(sigma2_draws),
     RMSE = as.numeric(rmse),
     MAE = as.numeric(mae),
     check.names = FALSE
   )
   
   # Save posterior mean for each variable
-  variable_names <- c("Intercept", colnames(train_data %>% select(-Date, -y_t)))
+  variable_names <- c("Intercept", colnames(train_data %>% dplyr::select(-Date, -y_t)))
   
   coef_df <- data.frame(
     Variable = variable_names,
@@ -225,7 +324,7 @@ for (target_ticker in tickers) {
   )
   coef_list[[target_ticker]] <- coef_df
   
-  # Build plot data
+  # Build plot data on the original price scale
   plot_df <- data.frame(
     Stock = target_ticker,
     Date = as.Date(test_data$Date),
@@ -258,7 +357,7 @@ results_table <- do.call(rbind, results_list)
 results_table <- results_table %>%
   arrange(RMSE) %>%
   mutate(
-    `Sigma² estimate` = round(`Sigma² estimate`, 6),
+    `Posterior mean of Sigma²` = round(`Posterior mean of Sigma²`, 6),
     RMSE = round(RMSE, 6),
     MAE = round(MAE, 6)
   )
@@ -267,5 +366,5 @@ results_table <- results_table %>%
 rownames(results_table) <- NULL
 
 # Print the final summary table
-cat("\nBayesian Model Summary:\n")
+cat("\nBayesian Linear Regression Summary:\n")
 print(results_table)
