@@ -24,7 +24,7 @@ This model uses a log-price-based SARIMAX model to predict stock prices for 8 la
 
 ### Objective
 The goal of this model is to predict future stock prices.  
-For each stock, the model uses lagged moving averages of the target stock and lagged information from the other technology stocks.
+For each stock, the model uses lagged moving averages of the target stock, lagged log prices of the other technology stocks, and the ARIMA structure to capture the target stock's own time dependence.
 
 ### Dataset
 The data comes from Yahoo Finance.  
@@ -67,7 +67,8 @@ We use these two metrics to evaluate the model:
 ### Output
 This model gives:
 
-- Forecast plots for the 8 stocks
+- Forecast plots displayed for the 8 stocks
+- A CSV file `sarimax_all.csv` with actual and forecasted test-period prices
 - A summary table with ADF results, selected ARIMA order, RMSE, and MAE for each stock
 
 ## Model 2: Bayesian Model
@@ -100,7 +101,7 @@ The 8 stocks used in this project are:
 ### Features
 For each target stock, the model uses:
 
-- Log-transformed stock price
+- Current log-transformed stock price as the target variable
 - One-day lagged log price of the target stock
 - One-day lagged 20-day moving average of the target stock on the log scale
 - One-day lagged 50-day moving average of the target stock on the log scale
@@ -125,4 +126,5 @@ We use these two metrics to evaluate the model:
 This model gives:
 
 - Prediction plots for the 8 stocks
-- A Bayesian model summary table with posterior mean of Sigma², RMSE, and MAE for each stock
+- A CSV file `bayesian_all.csv` with actual and forecasted test-period prices
+- A printed Bayesian model summary table with posterior mean of Sigma², RMSE, and MAE for each stock
