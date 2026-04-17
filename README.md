@@ -18,10 +18,9 @@ The app uses the saved result files from the two models:
 - `sarimax_all.csv`
 - `bayesian_all.csv`
 
-
 ## Model 1: Time Series Model (SARIMAX)
 
-This model uses a price-based SARIMAX model to predict stock prices for 8 large technology stocks.
+This model uses a log-price-based SARIMAX model to predict stock prices for 8 large technology stocks.
 
 ### Objective
 The goal of this model is to predict future stock prices.  
@@ -71,7 +70,6 @@ This model gives:
 - Forecast plots for the 8 stocks
 - A summary table with ADF results, selected ARIMA order, RMSE, and MAE for each stock
 
-
 ## Model 2: Bayesian Model
 
 This model uses a Bayesian linear regression model to predict stock prices for 8 large technology stocks.
@@ -113,7 +111,7 @@ We build one Bayesian linear regression model for each stock.
 The data is split into training data and testing data.  
 We use 80% of the data for training and 20% for testing.  
 The model is fitted on log-transformed prices using Gibbs sampling.  
-A normal prior is used for the regression coefficients, and an inverse-gamma prior is used for Sigma².  
+A zero-mean normal prior with variance controlled by `tau2` is used for the regression coefficients, and an inverse-gamma prior is used for Sigma².  
 Posterior predictive draws are generated on the log scale.  
 After prediction, the forecast values are transformed back to the original price scale.
 
