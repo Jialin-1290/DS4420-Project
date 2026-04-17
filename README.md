@@ -10,7 +10,7 @@ https://ds4420-project-et8kx8roxsd3n3byf8tiyj.streamlit.app/
 
 The app includes two pages:
 
-- An overview page with a short description of the project, data, methods, findings, and future work
+- An overview page with sections for introduction, motivation and data, method, main findings, and discussion and future work
 - An interactive forecast viewer that lets users choose a stock, choose a model view, select a date range, and compare actual and forecasted stock prices
 
 The app uses the saved result files from the two models:
